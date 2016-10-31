@@ -3,7 +3,7 @@
 import time
 import logging
 
-from bigchaindb_common import exceptions
+from bigchaindb.common import exceptions
 import rethinkdb as r
 
 import bigchaindb
@@ -65,6 +65,18 @@ class Connection:
                     raise
                 else:
                     time.sleep(2**i)
+
+
+def get_backend():
+    '''Get a backend instance.'''
+
+    from bigchaindb.db.backends import rethinkdb
+
+    # NOTE: this function will be re-implemented when we have real
+    # multiple backends to support. Right now it returns the RethinkDB one.
+    return rethinkdb.RethinkDBBackend(host=bigchaindb.config['database']['host'],
+                                      port=bigchaindb.config['database']['port'],
+                                      db=bigchaindb.config['database']['name'])
 
 
 def get_conn():
