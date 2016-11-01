@@ -33,7 +33,8 @@ def test_check_for_quorum_invalid(b, user_vk):
                    [member.vote(test_block.id, 'abc', False) for member in test_federation[2:]]
 
     # cast votes
-    b.connection.run(r.table('votes').insert(votes, durability='hard'))
+    for vote in votes:
+        b.write_vote(vote)
 
     # since this block is now invalid, should pass to the next process
     assert e.check_for_quorum(votes[-1]) == test_block
@@ -62,7 +63,8 @@ def test_check_for_quorum_invalid_prev_node(b, user_vk):
                    [member.vote(test_block.id, 'def', True) for member in test_federation[2:]]
 
     # cast votes
-    b.connection.run(r.table('votes').insert(votes, durability='hard'))
+    for vote in votes:
+        b.write_vote(vote)
 
     # since nodes cannot agree on prev block, the block is invalid
     assert e.check_for_quorum(votes[-1]) == test_block
@@ -91,7 +93,8 @@ def test_check_for_quorum_valid(b, user_vk):
     votes = [member.vote(test_block.id, 'abc', True)
              for member in test_federation]
     # cast votes
-    b.connection.run(r.table('votes').insert(votes, durability='hard'))
+    for vote in votes:
+        b.write_vote(vote)
 
     # since this block is valid, should go nowhere
     assert e.check_for_quorum(votes[-1]) is None
@@ -107,10 +110,12 @@ def test_check_requeue_transaction(b, user_vk):
     test_block = b.create_block([tx1])
 
     e.requeue_transactions(test_block)
-    backlog_tx = b.connection.run(r.table('backlog').get(tx1.id))
-    backlog_tx.pop('assignee')
-    backlog_tx.pop('assignment_timestamp')
-    assert backlog_tx == tx1.to_dict()
+
+    backlog_tx, status = b.get_transaction(tx1.id, include_status=True)
+    #backlog_tx = b.connection.run(r.table('backlog').get(tx1.id))
+    assert status == b.TX_IN_BACKLOG
+    assert backlog_tx == tx1
+
 
 
 @patch.object(Pipeline, 'start')
@@ -155,8 +160,8 @@ def test_full_pipeline(b, user_vk):
     vote_valid = b.vote(valid_block.id, 'abc', True)
     vote_invalid = b.vote(invalid_block.id, 'abc', False)
 
-    b.connection.run(r.table('votes').insert(vote_valid, durability='hard'))
-    b.connection.run(r.table('votes').insert(vote_invalid, durability='hard'))
+    b.write_vote(vote_valid)
+    b.write_vote(vote_invalid)
 
     outpipe.get()
     pipeline.terminate()
