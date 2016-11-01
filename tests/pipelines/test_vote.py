@@ -166,7 +166,7 @@ def test_valid_block_voting_sequential(b, monkeypatch):
         last_vote = vote_obj.vote(*vote_obj.validate_tx(tx, block_id, num_tx))
 
     vote_obj.write_vote(last_vote)
-    vote_rs = b.connection.run(r.table('votes').get_all([block.id, b.me], index='block_and_voter'))
+    vote_rs = b.backend.get_votes_by_block_id_and_voter(block_id, b.me)
     vote_doc = vote_rs.next()
 
     assert vote_doc['vote'] == {'voting_for_block': block.id,
@@ -200,7 +200,7 @@ def test_valid_block_voting_multiprocessing(b, monkeypatch):
     vote_out = outpipe.get()
     vote_pipeline.terminate()
 
-    vote_rs = b.connection.run(r.table('votes').get_all([block.id, b.me], index='block_and_voter'))
+    vote_rs = b.backend.get_votes_by_block_id_and_voter(block.id, b.me)
     vote_doc = vote_rs.next()
     assert vote_out['vote'] == vote_doc['vote']
     assert vote_doc['vote'] == {'voting_for_block': block.id,
@@ -241,7 +241,7 @@ def test_valid_block_voting_with_create_transaction(b, monkeypatch):
     vote_out = outpipe.get()
     vote_pipeline.terminate()
 
-    vote_rs = b.connection.run(r.table('votes').get_all([block.id, b.me], index='block_and_voter'))
+    vote_rs = b.backend.get_votes_by_block_id_and_voter(block.id, b.me)
     vote_doc = vote_rs.next()
     assert vote_out['vote'] == vote_doc['vote']
     assert vote_doc['vote'] == {'voting_for_block': block.id,
@@ -295,7 +295,7 @@ def test_valid_block_voting_with_transfer_transactions(monkeypatch, b):
     vote2_out = outpipe.get()
     vote_pipeline.terminate()
 
-    vote_rs = b.connection.run(r.table('votes').get_all([block.id, b.me], index='block_and_voter'))
+    vote_rs = b.backend.get_votes_by_block_id_and_voter(block.id, b.me)
     vote_doc = vote_rs.next()
     assert vote_out['vote'] == vote_doc['vote']
     assert vote_doc['vote'] == {'voting_for_block': block.id,
@@ -309,7 +309,7 @@ def test_valid_block_voting_with_transfer_transactions(monkeypatch, b):
     assert crypto.VerifyingKey(b.me).verify(serialized_vote,
                                             vote_doc['signature']) is True
 
-    vote2_rs = b.connection.run(r.table('votes').get_all([block2.id, b.me], index='block_and_voter'))
+    vote2_rs = b.backend.get_votes_by_block_id_and_voter(block2.id, b.me)
     vote2_doc = vote2_rs.next()
     assert vote2_out['vote'] == vote2_doc['vote']
     assert vote2_doc['vote'] == {'voting_for_block': block2.id,
@@ -346,7 +346,7 @@ def test_unsigned_tx_in_block_voting(monkeypatch, b, user_vk):
     vote_out = outpipe.get()
     vote_pipeline.terminate()
 
-    vote_rs = b.connection.run(r.table('votes').get_all([block.id, b.me], index='block_and_voter'))
+    vote_rs = b.backend.get_votes_by_block_id_and_voter(block.id, b.me)
     vote_doc = vote_rs.next()
     assert vote_out['vote'] == vote_doc['vote']
     assert vote_doc['vote'] == {'voting_for_block': block.id,
@@ -385,7 +385,7 @@ def test_invalid_id_tx_in_block_voting(monkeypatch, b, user_vk):
     vote_out = outpipe.get()
     vote_pipeline.terminate()
 
-    vote_rs = b.connection.run(r.table('votes').get_all([block['id'], b.me], index='block_and_voter'))
+    vote_rs = b.backend.get_votes_by_block_id_and_voter(block['id'], b.me)
     vote_doc = vote_rs.next()
     assert vote_out['vote'] == vote_doc['vote']
     assert vote_doc['vote'] == {'voting_for_block': block['id'],
@@ -424,7 +424,7 @@ def test_invalid_content_in_tx_in_block_voting(monkeypatch, b, user_vk):
     vote_out = outpipe.get()
     vote_pipeline.terminate()
 
-    vote_rs = b.connection.run(r.table('votes').get_all([block['id'], b.me], index='block_and_voter'))
+    vote_rs = b.backend.get_votes_by_block_id_and_voter(block['id'], b.me)
     vote_doc = vote_rs.next()
     assert vote_out['vote'] == vote_doc['vote']
     assert vote_doc['vote'] == {'voting_for_block': block['id'],
@@ -459,7 +459,7 @@ def test_invalid_block_voting(monkeypatch, b, user_vk):
     vote_out = outpipe.get()
     vote_pipeline.terminate()
 
-    vote_rs = b.connection.run(r.table('votes').get_all([block['id'], b.me], index='block_and_voter'))
+    vote_rs = b.backend.get_votes_by_block_id_and_voter(block['id'], b.me)
     vote_doc = vote_rs.next()
     assert vote_out['vote'] == vote_doc['vote']
     assert vote_doc['vote'] == {'voting_for_block': block['id'],
