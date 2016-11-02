@@ -6,7 +6,7 @@ from time import time
 from itertools import compress
 from bigchaindb.common import crypto, exceptions
 from bigchaindb.common.util import gen_timestamp, serialize
-from bigchaindb.common.transaction import TransactionLink, Metadata
+from bigchaindb.common.transaction import TransactionLink
 
 import rethinkdb as r
 
@@ -75,9 +75,6 @@ class Bigchain(object):
             raise exceptions.KeypairNotFoundException()
 
         self.connection = Connection(host=self.host, port=self.port, db=self.dbname)
-
-    def reconnect(self):
-        return r.connect(host=self.host, port=self.port, db=self.dbname)
 
     def write_transaction(self, signed_transaction, durability='soft'):
         """Write the transaction to bigchain.
@@ -205,10 +202,10 @@ class Bigchain(object):
                                    the return value is then a tuple: (tx, status)
 
         Returns:
-            A dict with the transaction details if the transaction was found.
-            Will add the transaction status to payload ('valid', 'undecided',
-            or 'backlog'). If no transaction with that `txid` was found it
-            returns `None`
+            A :class:`~.models.Transaction` instance if the transaction
+            was found, otherwise ``None``.
+            If :attr:`include_status` is ``True``, also returns the
+            transaction's status if the transaction was found.
         """
 
         response, tx_status = None, None
@@ -218,7 +215,7 @@ class Bigchain(object):
         if validity:
             # Disregard invalid blocks, and return if there are no valid or undecided blocks
             validity = {_id: status for _id, status in validity.items()
-                                    if status != Bigchain.BLOCK_INVALID}
+                        if status != Bigchain.BLOCK_INVALID}
             if validity:
 
                 tx_status = self.TX_UNDECIDED
@@ -287,7 +284,7 @@ class Bigchain(object):
             }
 
             # NOTE: If there are multiple valid blocks with this transaction,
-            #       something has gone wrong
+            # something has gone wrong
             if list(validity.values()).count(Bigchain.BLOCK_VALID) > 1:
                 block_ids = str([block for block in validity
                                  if validity[block] == Bigchain.BLOCK_VALID])
@@ -366,8 +363,9 @@ class Bigchain(object):
                 if self.get_transaction(transaction['id']):
                     num_valid_transactions += 1
                 if num_valid_transactions > 1:
-                    raise exceptions.DoubleSpend('`{}` was spent more then once. There is a problem with the chain'.format(
-                        txid))
+                    raise exceptions.DoubleSpend(
+                        '`{}` was spent more then once. There is a problem with the chain'.format(
+                            txid))
 
             if num_valid_transactions:
                 return Transaction.from_dict(transactions[0])
@@ -378,14 +376,14 @@ class Bigchain(object):
             return None
 
     def get_owned_ids(self, owner):
-        """Retrieve a list of `txids` that can we used has inputs.
+        """Retrieve a list of `txid`s that can be used as inputs.
 
         Args:
             owner (str): base58 encoded public key.
 
         Returns:
-            list (TransactionLink): list of `txid`s and `cid`s pointing to
-                                      another transaction's condition
+            :obj:`list` of TransactionLink: list of `txid`s and `cid`s
+            pointing to another transaction's condition
         """
 
         # get all transactions in which owner is in the `owners_after` list
@@ -400,7 +398,7 @@ class Bigchain(object):
                     continue
 
             # NOTE: It's OK to not serialize the transaction here, as we do not
-            #       use it after the execution of this function.
+            # use it after the execution of this function.
             # a transaction can contain multiple outputs (conditions) so we need to iterate over all of them
             # to get a list of outputs available to spend
             for index, cond in enumerate(tx['transaction']['conditions']):
@@ -539,11 +537,11 @@ class Bigchain(object):
         return block
 
     def vote(self, block_id, previous_block_id, decision, invalid_reason=None):
-        """Cast your vote on the block given the previous_block_hash and the decision (valid/invalid)
-        return the block to the updated in the database.
+        """Create a signed vote for a block given the
+        :attr:`previous_block_id` and the :attr:`decision` (valid/invalid).
 
         Args:
-            block_id (str): The id of the block to vote.
+            block_id (str): The id of the block to vote on.
             previous_block_id (str): The id of the previous block.
             decision (bool): Whether the block is valid or invalid.
             invalid_reason (Optional[str]): Reason the block is invalid
@@ -599,12 +597,14 @@ class Bigchain(object):
         voter_counts = collections.Counter([vote['node_pubkey'] for vote in votes])
         for node in voter_counts:
             if voter_counts[node] > 1:
-                raise exceptions.MultipleVotesError('Block {block_id} has multiple votes ({n_votes}) from voting node {node_id}'
-                                                    .format(block_id=block_id, n_votes=str(voter_counts[node]), node_id=node))
+                raise exceptions.MultipleVotesError(
+                    'Block {block_id} has multiple votes ({n_votes}) from voting node {node_id}'
+                    .format(block_id=block_id, n_votes=str(voter_counts[node]), node_id=node))
 
         if len(votes) > n_voters:
             raise exceptions.MultipleVotesError('Block {block_id} has {n_votes} votes cast, but only {n_voters} voters'
-                                                .format(block_id=block_id, n_votes=str(len(votes)), n_voters=str(n_voters)))
+                                                .format(block_id=block_id, n_votes=str(len(votes)),
+                                                        n_voters=str(n_voters)))
 
         # vote_cast is the list of votes e.g. [True, True, False]
         vote_cast = [vote['vote']['is_block_valid'] for vote in votes]
