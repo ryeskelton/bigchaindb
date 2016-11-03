@@ -7,12 +7,13 @@ from time import time
 
 import rethinkdb as r
 
+from bigchaindb.db import Query
 from bigchaindb import util
 from bigchaindb.db.utils import Connection
 from bigchaindb.common import exceptions
 
 
-class RethinkDBBackend:
+class RethinkDBBackend(Query):
 
     def __init__(self, host=None, port=None, db=None):
         """Initialize a new RethinkDB Backend instance.

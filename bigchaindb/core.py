@@ -10,7 +10,7 @@ from bigchaindb.common.transaction import TransactionLink
 
 import bigchaindb
 
-from bigchaindb.db.utils import Connection, get_backend
+from bigchaindb.db import get_backend_factory
 from bigchaindb import config_utils, util
 from bigchaindb.consensus import BaseConsensusRules
 from bigchaindb.models import Block, Transaction
@@ -31,9 +31,8 @@ class Bigchain(object):
     # return if transaction is in backlog
     TX_IN_BACKLOG = 'backlog'
 
-    def __init__(self, host=None, port=None, dbname=None, backend=None,
-                 public_key=None, private_key=None, keyring=[],
-                 backlog_reassign_delay=None):
+    def __init__(self, public_key=None, private_key=None, keyring=[],
+                 backend=None, backlog_reassign_delay=None):
         """Initialize the Bigchain instance
 
         A Bigchain instance has several configuration parameters (e.g. host).
@@ -46,21 +45,15 @@ class Bigchain(object):
         its default value (defined in bigchaindb.__init__).
 
         Args:
-            host (str): hostname where RethinkDB is running.
-            port (int): port in which RethinkDB is running (usually 28015).
-            dbname (str): the name of the database to connect to (usually bigchain).
-            backend (:class:`~bigchaindb.db.backends.rethinkdb.RehinkDBBackend`):
-                the database backend to use.
+            backend (:class:`~bigchaindb.db.backends.QueryBackend`):
+                the query backend to use.
             public_key (str): the base58 encoded public key for the ED25519 curve.
             private_key (str): the base58 encoded private key for the ED25519 curve.
             keyring (list[str]): list of base58 encoded public keys of the federation nodes.
         """
 
         config_utils.autoconfigure()
-        self.host = host or bigchaindb.config['database']['host']
-        self.port = port or bigchaindb.config['database']['port']
-        self.dbname = dbname or bigchaindb.config['database']['name']
-        self.backend = backend or get_backend(host, port, dbname)
+        self.backend = backend or get_backend_factory(**bigchaindb.config['database']).get_query()
         self.me = public_key or bigchaindb.config['keypair']['public']
         self.me_private = private_key or bigchaindb.config['keypair']['private']
         self.nodes_except_me = keyring or bigchaindb.config['keyring']
@@ -71,8 +64,6 @@ class Bigchain(object):
 
         if not self.me or not self.me_private:
             raise exceptions.KeypairNotFoundException()
-
-        self.connection = Connection(host=self.host, port=self.port, db=self.dbname)
 
     def write_transaction(self, signed_transaction, durability='soft'):
         """Write the transaction to bigchain.
