@@ -323,11 +323,10 @@ class TestBigchainApi(object):
 
     @pytest.mark.skipif(reason='This test may not make sense after changing the chainification mode')
     def test_get_last_block(self, b):
-        import rethinkdb as r
         from bigchaindb.db.utils import get_conn
 
         # get the number of blocks
-        num_blocks = r.table('bigchain').count().run(get_conn())
+        num_blocks = b.backend.count_blocks()
 
         # get the last block
         last_block = b.get_last_block()
