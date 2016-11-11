@@ -7,9 +7,12 @@ from cryptoconditions import (Fulfillment as CCFulfillment,
                               PreimageSha256Fulfillment)
 from cryptoconditions.exceptions import ParsingError
 
+import jsonschema
+
 from bigchaindb.common.crypto import SigningKey, hash_data
 from bigchaindb.common.exceptions import (KeypairMismatchException,
                                           InvalidHash, InvalidSignature)
+from bigchaindb.common.schema import TX_JSON_SCHEMA
 from bigchaindb.common.util import serialize, gen_timestamp
 
 
@@ -493,7 +496,6 @@ class Metadata(object):
         if data is not None and not isinstance(data, dict):
             raise TypeError('`data` must be a dict instance or None')
 
-        # TODO: Rename `payload_id` to `id`
         self.data_id = data_id if data_id is not None else self.to_hash()
         self.data = data
 
@@ -1194,6 +1196,10 @@ class Transaction(object):
             Returns:
                 :class:`~bigchaindb.common.transaction.Transaction`
         """
+
+        # Attempt full validation of tx body, fail quickly if possible
+        jsonschema.validate(tx_body, TX_JSON_SCHEMA)
+
         # NOTE: Remove reference to avoid side effects
         tx_body = deepcopy(tx_body)
         try:
