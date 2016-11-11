@@ -634,7 +634,7 @@ def test_validate_multiple_fulfillments(user_ffill, user_cond, user_priv):
 
     tx = Transaction(Transaction.CREATE, Asset(),
                      [user_ffill, deepcopy(user_ffill)],
-                     [user_ffill, deepcopy(user_cond)])
+                     [user_cond, deepcopy(user_cond)])
 
     expected_first = deepcopy(tx)
     expected_second = deepcopy(tx)
@@ -747,8 +747,7 @@ def test_validate_fulfillments_of_transfer_tx_with_invalid_params(transfer_tx,
     validate(tx)
 
 
-def test_create_create_transaction_single_io(user_cond, user_pub, data,
-                                             data_id):
+def test_create_create_transaction_single_io(user_cond, user_pub, data, uuid4):
     from bigchaindb.common.transaction import Transaction, Asset
 
     expected = {
@@ -758,7 +757,7 @@ def test_create_create_transaction_single_io(user_cond, user_pub, data,
                 'data': data,
             },
             'asset': {
-                'id': data_id,
+                'id': uuid4,
                 'divisible': False,
                 'updatable': False,
                 'refillable': False,
@@ -776,17 +775,18 @@ def test_create_create_transaction_single_io(user_cond, user_pub, data,
             ],
             'operation': 'CREATE',
         },
-        'version': 1
+        'version': 1,
     }
 
-    asset = Asset(data, data_id)
-    tx = Transaction.create([user_pub], [user_pub], data, asset).to_dict()
-    tx.pop('id')
-    tx['transaction']['metadata'].pop('id')
-    tx['transaction'].pop('timestamp')
-    tx['transaction']['fulfillments'][0]['fulfillment'] = None
+    asset = Asset(data, uuid4)
+    tx = Transaction.create([user_pub], [user_pub], data, asset)
+    tx_dict = tx.to_dict()
+    tx_dict.pop('id')
+    tx_dict['transaction']['metadata'].pop('id')
+    tx_dict['transaction']['fulfillments'][0]['fulfillment'] = None
+    expected['transaction']['timestamp'] = tx_dict['transaction']['timestamp']
 
-    assert tx == expected
+    assert tx_dict == expected
 
     validate(tx)
 
@@ -863,7 +863,7 @@ def test_validate_multiple_io_create_transaction(user_pub, user_priv,
 def test_create_create_transaction_threshold(user_pub, user2_pub, user3_pub,
                                              user_user2_threshold_cond,
                                              user_user2_threshold_ffill, data,
-                                             data_id):
+                                             uuid4):
     from bigchaindb.common.transaction import Transaction, Asset
 
     expected = {
@@ -873,7 +873,7 @@ def test_create_create_transaction_threshold(user_pub, user2_pub, user3_pub,
                 'data': data,
             },
             'asset': {
-                'id': data_id,
+                'id': uuid4,
                 'divisible': False,
                 'updatable': False,
                 'refillable': False,
@@ -893,7 +893,7 @@ def test_create_create_transaction_threshold(user_pub, user2_pub, user3_pub,
         },
         'version': 1
     }
-    asset = Asset(data, data_id)
+    asset = Asset(data, uuid4)
     tx = Transaction.create([user_pub], [user_pub, user2_pub], data, asset)
     tx_dict = tx.to_dict()
     tx_dict.pop('id')
@@ -902,8 +902,6 @@ def test_create_create_transaction_threshold(user_pub, user2_pub, user3_pub,
     tx_dict['transaction']['fulfillments'][0]['fulfillment'] = None
 
     assert tx_dict == expected
-
-    validate(tx)
 
 
 def test_validate_threshold_create_transaction(user_pub, user_priv, user2_pub,
@@ -917,7 +915,7 @@ def test_validate_threshold_create_transaction(user_pub, user_priv, user2_pub,
     validate(tx)
 
 
-def test_create_create_transaction_hashlock(user_pub, data, data_id):
+def test_create_create_transaction_hashlock(user_pub, data, uuid4):
     from cryptoconditions import PreimageSha256Fulfillment
     from bigchaindb.common.transaction import Transaction, Condition, Asset
 
@@ -932,7 +930,7 @@ def test_create_create_transaction_hashlock(user_pub, data, data_id):
                 'data': data,
             },
             'asset': {
-                'id': data_id,
+                'id': uuid4,
                 'divisible': False,
                 'updatable': False,
                 'refillable': False,
@@ -953,7 +951,7 @@ def test_create_create_transaction_hashlock(user_pub, data, data_id):
         'version': 1
     }
 
-    asset = Asset(data, data_id)
+    asset = Asset(data, uuid4)
     tx = Transaction.create([user_pub], [], data, asset, secret).to_dict()
     tx.pop('id')
     tx['transaction']['metadata'].pop('id')
@@ -961,8 +959,6 @@ def test_create_create_transaction_hashlock(user_pub, data, data_id):
     tx['transaction']['fulfillments'][0]['fulfillment'] = None
 
     assert tx == expected
-
-    validate(tx)
 
 
 def test_validate_hashlock_create_transaction(user_pub, user_priv, data):
