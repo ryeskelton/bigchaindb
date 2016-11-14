@@ -1,8 +1,6 @@
 import time
 from unittest.mock import patch
 
-import rethinkdb as r
-
 from multipipes import Pipe
 
 
@@ -69,7 +67,7 @@ def test_write_block(b, user_vk):
 
     block_doc = b.create_block(txs)
     block_maker.write(block_doc)
-    expected = b.connection.run(r.table('bigchain').get(block_doc.id))
+    expected = b.backend.get_block(block_doc.id)
     expected = Block.from_dict(expected)
 
     assert expected == block_doc
@@ -90,7 +88,7 @@ def test_duplicate_transaction(b, user_vk):
     block_maker.write(block_doc)
 
     # block is in bigchain
-    assert b.connection.run(r.table('bigchain').get(block_doc.id)) == block_doc.to_dict()
+    assert b.backend.get_block(block_doc.id) == block_doc.to_dict()
 
     b.write_transaction(txs[0])
 
@@ -172,7 +170,7 @@ def test_full_pipeline(b, user_vk):
 
         b.write_transaction(tx)
 
-    assert b.connection.run(r.table('backlog').count()) == 100
+    assert b.backend.count_backlog() == 100
 
     pipeline = create_pipeline()
     pipeline.setup(indata=get_changefeed(), outdata=outpipe)
@@ -182,9 +180,9 @@ def test_full_pipeline(b, user_vk):
     pipeline.terminate()
 
     block_doc = outpipe.get()
-    chained_block = b.connection.run(r.table('bigchain').get(block_doc.id))
+    chained_block = b.backend.get_block(block_doc.id)
     chained_block = Block.from_dict(chained_block)
 
     block_len = len(block_doc.transactions)
     assert chained_block == block_doc
-    assert b.connection.run(r.table('backlog').count()) == 100 - block_len 
+    assert b.backend.count_backlog() == 100 - block_len 
