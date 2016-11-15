@@ -6,5 +6,6 @@ Drivers & Clients
 
    http-client-server-api
    python-driver
+   Transaction CLI <https://docs.bigchaindb.com/projects/cli/en/latest/>
    example-apps
    
